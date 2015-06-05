@@ -1,22 +1,28 @@
 {
-  "name": "node-authentication",
+  "name": "tegila-auth",
   "main": "server.js",
-  "dependencies" : {
-    "express" : "~4.0.0",
-    "ejs" : "~0.8.5",
-    "mongoose" : "~3.8.1",
-    "passport" : "~0.1.17",
-    "passport-local" : "~0.1.6",
-    "passport-facebook" : "~1.0.2",
-    "passport-twitter" : "~1.0.2",
-    "passport-google-oauth" : "~0.1.5",
-    "connect-flash" : "~0.1.1",
-    "bcrypt-nodejs" : "latest",
-
-    "morgan": "~1.0.0",
+  "dependencies": {
+    "bcrypt-nodejs": "latest",
     "body-parser": "~1.0.0",
+    "connect-flash": "~0.1.1",
+    "connect-mongo": "^0.8.0",
     "cookie-parser": "~1.0.0",
+    "ejs": "~0.8.5",
+    "express": "~4.0.0",
+    "express-session": "~1.0.0",
     "method-override": "~1.0.0",
-    "express-session": "~1.0.0"
+    "mongoose": "~3.8.1",
+    "morgan": "~1.0.0",
+    "passport": "~0.1.17",
+    "passport-facebook": "~1.0.2",
+    "passport-google-oauth": "~0.1.5",
+    "passport-local": "~0.1.6",
+    "passport-twitter": "~1.0.2"
+  },
+  "devDependencies": {
+    "grunt-ssh": "^0.12.2",
+    "matchdep": "^0.3.0",
+    "coffee-script": "^1.8.0",
+    "grunt-open": "^0.2.3"
   }
 }

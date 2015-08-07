@@ -7,10 +7,10 @@ GoogleStrategy   = require('passport-google-oauth').OAuth2Strategy
 # load up the user model
 User = require('../app/models/user')
 
-# load the auth variables
-configAuth = require('./auth') # use this one for testing
+config = require './config'
 
-module.exports = (passport) ->
+# load the auth variables
+module.exports = (passport, db) ->
 
   # =========================================================================
   # passport session setup ==================================================
@@ -20,11 +20,12 @@ module.exports = (passport) ->
 
   # used to serialize the user for the session
   passport.serializeUser (user, done) ->
+    console.log "passport.coffee:23 user.id = #{user.id}"
     done(null, user.id)
 
   # used to deserialize the user
   passport.deserializeUser (id, done) ->
-    console.log id
+    console.log "passport.coffee:28 id = #{id}"
     User.findById id, (err, user) ->
       done(err, user)
 
@@ -119,9 +120,9 @@ module.exports = (passport) ->
   # FACEBOOK ================================================================
   # =========================================================================
   passport.use new FacebookStrategy
-    clientID: configAuth.facebookAuth.clientID
-    clientSecret: configAuth.facebookAuth.clientSecret
-    callbackURL: configAuth.facebookAuth.callbackURL
+    clientID: config.facebookAuth.clientID
+    clientSecret: config.facebookAuth.clientSecret
+    callbackURL: config.facebookAuth.callbackURL
     passReqToCallback: true # allows us to pass in the req from our route (lets us check if a user is logged in or not)
   ,(req, token, refreshToken, profile, done) ->
     findOrCreate req, 'facebook', profile, token, done
@@ -131,9 +132,9 @@ module.exports = (passport) ->
   # TWITTER =================================================================
   # =========================================================================
   passport.use new TwitterStrategy
-    consumerKey     : configAuth.twitterAuth.consumerKey
-    consumerSecret  : configAuth.twitterAuth.consumerSecret
-    callbackURL     : configAuth.twitterAuth.callbackURL
+    consumerKey     : config.twitterAuth.consumerKey
+    consumerSecret  : config.twitterAuth.consumerSecret
+    callbackURL     : config.twitterAuth.callbackURL
     passReqToCallback : true # allows us to pass in the req from our route (lets us check if a user is logged in or not)
 
   , (req, token, tokenSecret, profile, done) ->
@@ -144,9 +145,9 @@ module.exports = (passport) ->
   # GOOGLE ==================================================================
   # =========================================================================
   passport.use new GoogleStrategy
-    clientID        : configAuth.googleAuth.clientID
-    clientSecret    : configAuth.googleAuth.clientSecret
-    callbackURL     : configAuth.googleAuth.callbackURL
+    clientID        : config.googleAuth.clientID
+    clientSecret    : config.googleAuth.clientSecret
+    callbackURL     : config.googleAuth.callbackURL
     passReqToCallback : true # allows us to pass in the req from our route (lets us check if a user is logged in or not)
   ,(req, token, refreshToken, profile, done) ->
     findOrCreate(req, 'google', profile, token, done)
@@ -161,6 +162,7 @@ findOrCreate = (req, provider_name, profile, token, done) ->
     user[provider_name].id    = profile.id
     user[provider_name].token = token
     user[provider_name].name  = name
+    #console.log profile
     user[provider_name].email = (profile.emails[0].value || '').toLowerCase()
 
     user.save (err) ->
@@ -186,4 +188,3 @@ findOrCreate = (req, provider_name, profile, token, done) ->
       # user already exists and is logged in, we have to link accounts
       user                = req.user # pull the user out of the session
       fillParams user
-    

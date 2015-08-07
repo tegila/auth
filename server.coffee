@@ -1,55 +1,65 @@
 # server.js
 
-# set up ======================================================================
+# set up ====================`==================================================
 # get all the tools we need
 express  = require('express')
-app      = express()
-port     = process.env.PORT || 8080
+app      = do express
 mongoose = require('mongoose')
+
 passport = require('passport')
 flash    = require('connect-flash')
 
-morgan       = require('morgan')
-cookieParser = require('cookie-parser')
-bodyParser   = require('body-parser')
-session      = require('express-session')
-MongoStore   = require('connect-mongo')(session)
+morgan         = require('morgan')
+cookieParser   = require('cookie-parser')
+bodyParser     = require('body-parser')
+multer         = require("multer")
+errorHandler   = require("errorhandler")
+methodOverride = require("method-override")
+session        = require('express-session')
+MongoStore     = require('connect-mongo')(session)
 
-configDB   = require('./config/database')
+config = require './app/config'
 
 # configuration ===============================================================
-mongoose.connect(configDB.url) # connect to our database
+# connect to our database
+mongoose.connect("mongodb://#{config.mongo.url}:#{config.mongo.port}/#{config.mongo.database}") 
 
-require('./config/passport')(passport) # pass passport for configuration
-
-# set up our express application
-app.use morgan('dev') # log every request to the console
+# express http verb setup
 app.use do cookieParser # read cookies (needed for auth)
-app.use bodyParser.json() # get information from html forms
-app.use bodyParser.urlencoded { extended: true }
+app.use do methodOverride
+## express addons
+app.use do bodyParser.json
+app.use bodyParser.urlencoded(extended: true)
+app.use do multer
+
+## Debugger
+app.use morgan("dev")
+app.use errorHandler
+  dumpExceptions: true
+  showStack: true
 
 app.set 'view engine', 'ejs' # set up ejs for templating
 
-# required for passport
+# required for passport mongo session
 app.use session 
   saveUninitialized: false # don't create session until something stored
   resave: false #don't save session if unmodified
   store: new MongoStore
-    url: 'mongodb://192.168.1.112:27017/passport'
-    touchAfter: 24 * 3600 # time period in seconds
-  secret: 'ilovescotchsctchscotch' # session secret
+    url: 'mongodb://192.168.1.112:27017/temp'
+  secret: config.express.secret # session secret
   cookie: 
-    #domain : "tegila.com.br"
-    httpOnly : true
-    path     : '/'
+    domain: ".tegila.com.br"
+    maxAge: 3600000
 
 app.use do passport.initialize
 app.use do passport.session # persistent login sessions
 app.use do flash # use connect-flash for flash messages stored in session
 
+require('./app/passport')(passport) # pass passport for configuration
 # routes ======================================================================
-require('./app/routes')(app, passport) # load our routes and pass in our app and fully configured passport
+# load our routes and pass in our app and fully configured passport
+require('./app/routes')(app, passport) 
 
 # launch ======================================================================
-app.listen port
-console.log "The magic happens on port #{port}"
+app.listen config.express.port
+console.log "The magic happens on port #{config.express.port}"

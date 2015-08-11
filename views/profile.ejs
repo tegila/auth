@@ -103,6 +103,27 @@
 
 			</div>
 		</div>
+
+				<!-- GOOGLE INFORMATION -->
+		<div class="col-sm-6">
+			<div class="well">
+				<h3 class="text-danger" style="color: #FFF059;"><span class="fa"></span> MercadoLivre</h3>
+
+				<% if (user.mercadolivre.id) { %>
+					<p>
+						<strong>id</strong>: <%= user.mercadolivre.profile.id %><br>
+						<strong>token</strong>: <%= user.mercadolivre.token %><br>
+						<strong>email</strong>: <%= user.mercadolivre.profile.email %><br>
+						<strong>name</strong>: <%= user.mercadolivre.profile.name %>
+					</p>
+
+					<a href="/unlink/mercadolivre" class="btn btn-danger" style="background-color: #FFF059; border-color: #E8DB55;">Unlink</a>
+				<% } else { %>
+					<a href="/connect/mercadolivre" class="btn btn-danger" style="background-color: #FFF059; border-color: #E8DB55;">Connect MercadoLivre</a>
+				<% } %>
+
+			</div>
+		</div>
 	</div>
 
 	<div class="text-center">

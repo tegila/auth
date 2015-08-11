@@ -6,6 +6,7 @@ isLoggedIn = (req, res, next) ->
   if req.isAuthenticated()
     return next()
 
+  console.log "not authenticated"
   res.redirect('/')
 
 module.exports = (app, passport) ->
@@ -133,4 +134,26 @@ module.exports = (app, passport) ->
     user.save (err) ->
       res.redirect('/profile')
 
+  # MercadoLivre
+  
+  app.get '/auth/mercadolivre', passport.authorize('mercadolibre')
+
+  # the callback after google has authenticated the user
+  app.get '/auth/mercadolivre/callback', passport.authenticate 'mercadolibre',
+    successRedirect : '/profile'
+    failureRedirect : '/'
+
+  # send to google to do the authentication
+  app.get '/connect/mercadolivre', passport.authorize('mercadolibre', { scope : ['profile', 'email'] })
+
+  # the callback after google has authorized the user
+  app.get '/connect/mercadolivre/callback', passport.authorize 'mercadolibre', 
+    successRedirect : '/profile'
+    failureRedirect : '/'
+
+  app.get '/unlink/mercadolivre', isLoggedIn, (req, res) ->
+    user              = req.user
+    user.mercadolivre = undefined
+    user.save (err) ->
+      res.redirect('/profile')
 

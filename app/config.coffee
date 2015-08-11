@@ -24,3 +24,9 @@ module.exports =
     clientID: "69284261339-73nq4o79hr185ga2bb581mmofmf1bugu.apps.googleusercontent.com"
     clientSecret: "w2sjNRsa0jxdPlwLDU6CajvO"
     callbackURL: "https://auth.tegila.com.br/auth/google/callback"
+
+  mercadolivreAuth:
+    clientID: '5231044222134262'
+    clientSecret: 'uV3JBzbNGqQwsSFxJstVegA0o9urLueC'
+    callbackURL: 'https://auth.tegila.com.br/auth/mercadolivre/callback'
+    authorizationURL: 'https://auth.mercadolivre.com.br/authorization'

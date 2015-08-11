@@ -3,9 +3,12 @@ LocalStrategy    = require('passport-local').Strategy
 FacebookStrategy = require('passport-facebook').Strategy
 TwitterStrategy  = require('passport-twitter').Strategy
 GoogleStrategy   = require('passport-google-oauth').OAuth2Strategy
+MercadoLibreStrategy = require('passport-mercadolibre').Strategy
 
 # load up the user model
 User = require('../app/models/user')
+
+crypto = require('crypto')
 
 config = require './config'
 
@@ -40,24 +43,17 @@ module.exports = (passport, db) ->
   ,(req, email, password, done) ->
     if (email)
       email = do email.toLowerCase # Use lower-case e-mails to avoid case-sensitive e-mail matching
+      password = crypto.createHash('md5').update(password).digest('hex')
 
     # asynchronous
     process.nextTick ->
-      User.findOne { 'local.email' :  email }, (err, user) ->
-        # if there are any errors, return the error
-        if (err)
-          return done err
-
+      User.findOne {'local.email':email, 'local.password':password}, (err, user) ->
         # if no user is found, return the message
         if not user
-          return done null, false, req.flash('loginMessage', 'No user found.')
-
-        if not user.validPassword password
-          return done null, false, req.flash('loginMessage', 'Oops! Wrong password.')
-
+          done null, false, req.flash('loginMessage', 'No user found.')
         # all is well, return user
         else
-          return done null, user
+          done null, user
 
   # =========================================================================
   # LOCAL SIGNUP ============================================================
@@ -70,51 +66,29 @@ module.exports = (passport, db) ->
   ,(req, email, password, done) ->
     if (email)
       email = do email.toLowerCase # Use lower-case e-mails to avoid case-sensitive e-mail matching
+      password = crypto.createHash('md5').update(password).digest('hex')
 
     # asynchronous
     process.nextTick ->
       # if the user is not already logged in:
-      if not req.user
-        User.findOne { 'local.email' :  email }, (err, user) ->
-          # if there are any errors, return the error
-          if (err)
-            return done(err)
+      
+      User.findOne {'local.email':email, 'local.password':password}, (err, user) ->
+        # if there are any errors, return the error
+        if (err)
+          return done(err)
+        
+        if user # exists
+          return done(null, user)
+        else if req.user # logged in
+          user = req.user
+        else # new user
+          user = new User()
 
-          # check to see if theres already a user with that email
-          if (user) 
-            return done null, false, req.flash('signupMessage', 'That email is already taken.')
-          else
-            # create the user
-            newUser = new User()
+        user.local.email = email
+        user.local.password = password
+        user.save (err) ->
+          return if (err) then done(err) else done(null,user)
 
-            newUser.local.email = email
-            newUser.local.password = newUser.generateHash(password)
-
-            newUser.save (err) ->
-              if (err)
-                return done(err)
-
-              return done(null, newUser)
-
-      # if the user is logged in but has no local account...
-      else if not req.user.local.email
-        # ...presumably they're trying to connect a local account
-        # BUT let's check if the email used to connect a local account is being used by another user
-        User.findOne { 'local.email' :  email }, (err, user) ->
-          return done(err) if (err)
-          
-          if user
-            return done null, false, req.flash('loginMessage', 'That email is already taken.')
-            # Using 'loginMessage instead of signupMessage because it's used by /connect/local'
-          else
-            user = req.user
-            user.local.email = email
-            user.local.password = user.generateHash(password)
-            user.save (err) ->
-              return if (err) then done(err) else done(null,user)
-      else
-        # user is logged in and already has a local account. Ignore signup. (You should log out before trying to create a new account, user!)
-        return done(null, req.user);
 
   # =========================================================================
   # FACEBOOK ================================================================
@@ -136,9 +110,7 @@ module.exports = (passport, db) ->
     consumerSecret  : config.twitterAuth.consumerSecret
     callbackURL     : config.twitterAuth.callbackURL
     passReqToCallback : true # allows us to pass in the req from our route (lets us check if a user is logged in or not)
-
   , (req, token, tokenSecret, profile, done) ->
-
     findOrCreate(req, 'twitter', profile, token, done)
 
   # =========================================================================
@@ -153,38 +125,44 @@ module.exports = (passport, db) ->
     findOrCreate(req, 'google', profile, token, done)
     
 
+  # =========================================================================
+  # MERCADOLIVRE ==================================================================
+  # =========================================================================
+
+  passport.use new MercadoLibreStrategy
+    clientID: config.mercadolivreAuth.clientID
+    clientSecret: config.mercadolivreAuth.clientSecret
+    callbackURL: config.mercadolivreAuth.callbackURL
+    authorizationURL: config.mercadolivreAuth.authorizationURL
+    passReqToCallback : true
+  , (req, token, refreshToken, profile, done) ->
+    findOrCreate(req, 'mercadolivre', profile, token, done)
+
+
 findOrCreate = (req, provider_name, profile, token, done) ->
-  fillParams =  (user) ->
-    if provider_name is 'facebook'
-      name = profile.name.givenName + ' ' + profile.name.familyName
-    else
-      name = profile.displayName
+  fillparams = (user) ->
+    user ?= new User()
     user[provider_name].id    = profile.id
     user[provider_name].token = token
-    user[provider_name].name  = name
-    #console.log profile
-    user[provider_name].email = (profile.emails[0].value || '').toLowerCase()
+    user[provider_name].refreshToken = req.query.code
+    user[provider_name].profile  = profile
 
     user.save (err) ->
       return if (err) then done(err) else done(null, user)
 
   # asynchronous
   process.nextTick ->
+    
     # check if the user is already logged in
-    if not req.user
-      User.findOne {"#{provider_name}.id" : profile.id }, (err, user) ->
-        return done(err) if (err)
-
-        if user
-          # if there is a user id already but no token (user was linked at one point and then removed)
-          if user[provider_name].token
-            return done(null, user) # user found, return that user
-        else
-          # if there is no user, create them
-          user                = new User()
-
-        fillParams user
-    else
+    if req.user
       # user already exists and is logged in, we have to link accounts
-      user                = req.user # pull the user out of the session
-      fillParams user
+      user = req.user # pull the user out of the session
+      fillparams user
+    else
+      User.findOne {"#{provider_name}.id" : profile.id }, (err, user) ->
+        if user
+          return done(null, user) # user found, return that user
+        fillparams user
+
+    
+
